@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback, useRef, type ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from './supabase';
 import type {
@@ -117,6 +117,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [goal, setGoal] = useState<LearningGoal | null>(null);
   const [allGoals, setAllGoals] = useState<LearningGoal[]>([]);
+  const activeGoalIdRef = useRef<string | null>(null);
   const [activeGoalId, setActiveGoalId] = useState<string | null>(null);
   const [weeks, setWeeks] = useState<PlanWeek[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -140,13 +141,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     let activeGoal: LearningGoal | null = null;
     if (goalIdOverride) {
       activeGoal = goalsList.find((g) => g.id === goalIdOverride) || null;
-    } else if (activeGoalId) {
-      activeGoal = goalsList.find((g) => g.id === activeGoalId) || null;
+    } else if (activeGoalIdRef.current) {
+      activeGoal = goalsList.find((g) => g.id === activeGoalIdRef.current) || null;
     } else if (goalsList.length > 0) {
       activeGoal = goalsList[0];
     }
 
     setGoal(activeGoal);
+    activeGoalIdRef.current = activeGoal?.id || null;
     setActiveGoalId(activeGoal?.id || null);
 
     if (activeGoal) {
@@ -261,6 +263,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!goalData) return;
     const newGoal = goalData as LearningGoal;
     setGoal(newGoal);
+    activeGoalIdRef.current = newGoal.id;
+    setActiveGoalId(newGoal.id);
 
     const plan = generateLearningPlan({
       topic: input.topic,
@@ -357,6 +361,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const switchGoal = useCallback(async (goalId: string) => {
     if (!session?.user) return;
+    activeGoalIdRef.current = goalId;
     setActiveGoalId(goalId);
     await loadUserData(session.user.id, goalId);
   }, [session, loadUserData]);
@@ -365,11 +370,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!session?.user) return;
     await supabase.from('learning_goals').delete().eq('id', goalId);
     const remaining = allGoals.filter((g) => g.id !== goalId);
-    if (activeGoalId === goalId) {
+    if (activeGoalIdRef.current === goalId) {
       if (remaining.length > 0) {
         await switchGoal(remaining[0].id);
       } else {
         setGoal(null);
+        activeGoalIdRef.current = null;
         setActiveGoalId(null);
         setWeeks([]);
         setTasks([]);
@@ -380,7 +386,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
     }
     setAllGoals(remaining);
-  }, [session, allGoals, activeGoalId, switchGoal]);
+  }, [session, allGoals, switchGoal]);
 
   const toggleTask = useCallback(async (taskId: string, completed: boolean) => {
     const task = tasks.find((t) => t.id === taskId);

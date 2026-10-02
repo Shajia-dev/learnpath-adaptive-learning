@@ -53,6 +53,7 @@ export function MyPlans({ onNavigate }: { onNavigate: (page: Page) => void }) {
             key={g.id}
             plan={g}
             isActive={g.id === activeGoalId}
+            canDelete={allGoals.length > 1}
             onSwitch={() => { switchGoal(g.id); onNavigate('dashboard'); }}
             onDelete={() => deleteGoal(g.id)}
             onView={() => { if (g.id !== activeGoalId) switchGoal(g.id); onNavigate('plan'); }}
@@ -63,12 +64,13 @@ export function MyPlans({ onNavigate }: { onNavigate: (page: Page) => void }) {
   );
 }
 
-function PlanCard({ plan, isActive, onSwitch, onDelete, onView }: {
+function PlanCard({ plan, isActive, onSwitch, onDelete, onView, canDelete }: {
   plan: LearningGoal;
   isActive: boolean;
   onSwitch: () => void;
   onDelete: () => void;
   onView: () => void;
+  canDelete: boolean;
 }) {
   const { weeks, tasks } = useApp();
   const planTasks = isActive ? tasks : [];
@@ -107,7 +109,7 @@ function PlanCard({ plan, isActive, onSwitch, onDelete, onView }: {
       <div className="flex items-center gap-2 mt-4 pt-4 border-t border-slate-100">
         {!isActive && <Button size="sm" variant="primary" onClick={onSwitch}>Switch to This Plan</Button>}
         {isActive && <Button size="sm" variant="outline" onClick={onView}>View Plan Details</Button>}
-        {allGoals.length > 1 && (
+        {canDelete && (
           <button
             onClick={onDelete}
             className="ml-auto flex items-center gap-1 text-xs text-red-500 hover:text-red-700 transition-colors"
