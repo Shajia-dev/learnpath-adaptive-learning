@@ -12,6 +12,7 @@ import { Resources } from '@/components/pages/Resources';
 import { Progress } from '@/components/pages/Progress';
 import { AIMentor } from '@/components/pages/AIMentor';
 import { Settings } from '@/components/pages/Settings';
+import { MyPlans } from '@/components/pages/MyPlans';
 import { GraduationCap, Loader2 } from 'lucide-react';
 
 function AppContent() {
@@ -42,6 +43,7 @@ function AppContent() {
   return (
     <AppLayout currentPage={page} onNavigate={setPage}>
       {page === 'dashboard' && <Dashboard onNavigate={setPage} />}
+      {page === 'myplans' && <MyPlans onNavigate={setPage} />}
       {page === 'plan' && <MyPlan />}
       {page === 'learn' && <Learn onNavigate={setPage} />}
       {page === 'projects' && <Projects />}

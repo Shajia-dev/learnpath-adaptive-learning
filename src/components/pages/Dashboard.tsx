@@ -22,6 +22,8 @@ export function Dashboard({ onNavigate }: { onNavigate: (page: Page) => void }) 
   const {
     profile,
     goal,
+    allGoals,
+    activeGoalId,
     weeks,
     tasks,
     projects,
@@ -34,6 +36,7 @@ export function Dashboard({ onNavigate }: { onNavigate: (page: Page) => void }) 
     toggleTask,
     updateGoal,
     saveAdaptation,
+    switchGoal,
   } = useApp();
 
   const [showAdapt, setShowAdapt] = useState(false);
@@ -57,8 +60,25 @@ export function Dashboard({ onNavigate }: { onNavigate: (page: Page) => void }) 
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Hello, {firstName}</h1>
           <p className="text-slate-500 mt-1">Here's your learning overview for today.</p>
+          {allGoals.length > 1 && (
+            <div className="flex items-center gap-2 mt-2">
+              <span className="text-xs text-slate-400">Active plan:</span>
+              <select
+                value={activeGoalId || ''}
+                onChange={(e) => switchGoal(e.target.value)}
+                className="text-xs font-medium text-teal-700 bg-teal-50 border border-teal-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-teal-500 cursor-pointer"
+              >
+                {allGoals.map((g) => (
+                  <option key={g.id} value={g.id}>{g.topic}</option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" onClick={() => onNavigate('myplans')}>
+            <span className="flex items-center gap-2"><Layers className="w-4 h-4" /> My Plans</span>
+          </Button>
           <Button variant="outline" onClick={() => onNavigate('learn')}>
             Continue Learning
           </Button>

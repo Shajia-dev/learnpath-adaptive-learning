@@ -20,6 +20,8 @@ interface AppData {
   session: Session | null;
   profile: Profile | null;
   goal: LearningGoal | null;
+  allGoals: LearningGoal[];
+  activeGoalId: string | null;
   weeks: PlanWeek[];
   tasks: Task[];
   projects: Project[];
@@ -47,6 +49,8 @@ interface AppData {
     desired_duration_weeks: number;
     deadline: string | null;
   }) => Promise<void>;
+  switchGoal: (goalId: string) => Promise<void>;
+  deleteGoal: (goalId: string) => Promise<void>;
   toggleTask: (taskId: string, completed: boolean) => Promise<void>;
   toggleProjectTask: (task: ProjectTask, completed: boolean) => Promise<void>;
   toggleResource: (resourceId: string, completed: boolean) => Promise<void>;
@@ -112,6 +116,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [goal, setGoal] = useState<LearningGoal | null>(null);
+  const [allGoals, setAllGoals] = useState<LearningGoal[]>([]);
+  const [activeGoalId, setActiveGoalId] = useState<string | null>(null);
   const [weeks, setWeeks] = useState<PlanWeek[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -121,17 +127,30 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [adaptations, setAdaptations] = useState<PlanAdaptation[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const loadUserData = useCallback(async (userId: string) => {
-    const [profileRes, goalRes] = await Promise.all([
+  const loadUserData = useCallback(async (userId: string, goalIdOverride?: string) => {
+    const [profileRes, goalsRes] = await Promise.all([
       supabase.from('profiles').select('*').eq('id', userId).maybeSingle(),
-      supabase.from('learning_goals').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(1).maybeSingle(),
+      supabase.from('learning_goals').select('*').eq('user_id', userId).order('created_at', { ascending: false }),
     ]);
 
+    const goalsList = (goalsRes.data as LearningGoal[]) || [];
     setProfile(profileRes.data as Profile | null);
-    setGoal(goalRes.data as LearningGoal | null);
+    setAllGoals(goalsList);
 
-    if (goalRes.data) {
-      const goalId = goalRes.data.id;
+    let activeGoal: LearningGoal | null = null;
+    if (goalIdOverride) {
+      activeGoal = goalsList.find((g) => g.id === goalIdOverride) || null;
+    } else if (activeGoalId) {
+      activeGoal = goalsList.find((g) => g.id === activeGoalId) || null;
+    } else if (goalsList.length > 0) {
+      activeGoal = goalsList[0];
+    }
+
+    setGoal(activeGoal);
+    setActiveGoalId(activeGoal?.id || null);
+
+    if (activeGoal) {
+      const goalId = activeGoal.id;
       const [weeksRes, tasksRes, projectsRes, ptRes, resourcesRes, progressRes, adaptationsRes] = await Promise.all([
         supabase.from('plan_weeks').select('*').eq('goal_id', goalId).order('week_number', { ascending: true }),
         supabase.from('tasks').select('*').in('week_id', (await supabase.from('plan_weeks').select('id').eq('goal_id', goalId)).data?.map((w: { id: string }) => w.id) || []).order('sort_order', { ascending: true }),
@@ -187,6 +206,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         } else {
           setProfile(null);
           setGoal(null);
+          setAllGoals([]);
+          setActiveGoalId(null);
           setWeeks([]);
           setTasks([]);
           setProjects([]);
@@ -333,6 +354,33 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     await loadUserData(session.user.id);
   }, [session, loadUserData]);
+
+  const switchGoal = useCallback(async (goalId: string) => {
+    if (!session?.user) return;
+    setActiveGoalId(goalId);
+    await loadUserData(session.user.id, goalId);
+  }, [session, loadUserData]);
+
+  const deleteGoal = useCallback(async (goalId: string) => {
+    if (!session?.user) return;
+    await supabase.from('learning_goals').delete().eq('id', goalId);
+    const remaining = allGoals.filter((g) => g.id !== goalId);
+    if (activeGoalId === goalId) {
+      if (remaining.length > 0) {
+        await switchGoal(remaining[0].id);
+      } else {
+        setGoal(null);
+        setActiveGoalId(null);
+        setWeeks([]);
+        setTasks([]);
+        setProjects([]);
+        setProjectTasks([]);
+        setResources([]);
+        setAdaptations([]);
+      }
+    }
+    setAllGoals(remaining);
+  }, [session, allGoals, activeGoalId, switchGoal]);
 
   const toggleTask = useCallback(async (taskId: string, completed: boolean) => {
     const task = tasks.find((t) => t.id === taskId);
@@ -507,6 +555,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     session,
     profile,
     goal,
+    allGoals,
+    activeGoalId,
     weeks,
     tasks,
     projects,
@@ -524,6 +574,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     refresh,
     createProfile,
     createGoalAndPlan,
+    switchGoal,
+    deleteGoal,
     toggleTask,
     toggleProjectTask,
     toggleResource,

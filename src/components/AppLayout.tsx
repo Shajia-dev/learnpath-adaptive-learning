@@ -15,6 +15,7 @@ import {
   Menu,
   X,
   ChevronRight,
+  Layers,
 } from 'lucide-react';
 
 export type Page =
@@ -25,7 +26,8 @@ export type Page =
   | 'resources'
   | 'progress'
   | 'mentor'
-  | 'settings';
+  | 'settings'
+  | 'myplans';
 
 interface NavItem {
   id: Page;
@@ -35,6 +37,7 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { id: 'myplans', label: 'My Plans', icon: Layers },
   { id: 'plan', label: 'My Plan', icon: CalendarDays },
   { id: 'learn', label: 'Learn', icon: BookOpen },
   { id: 'projects', label: 'Projects', icon: FolderKanban },
